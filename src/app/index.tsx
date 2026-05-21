@@ -1,9 +1,12 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function StartScreen() {
+  const router = useRouter();
+
   return (
     <LinearGradient colors={['#faf5ec', '#cce0ff']} style={styles.gradient}>
       <SafeAreaView style={styles.safe}>
@@ -18,7 +21,7 @@ export default function StartScreen() {
           <TouchableOpacity style={styles.signUpButton} activeOpacity={0.85}>
             <Text style={styles.signUpText}>Sign Up</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.loginButton} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')} activeOpacity={0.85}>
             <Text style={styles.loginText}>Log in</Text>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.7}>
