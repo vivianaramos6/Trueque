@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,11 +15,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   function handleLogin() {
-    Alert.alert('Logged in!', `Welcome${email ? `, ${email}` : ''}!`);
+    router.replace('/(tabs)');
   }
 
   return (

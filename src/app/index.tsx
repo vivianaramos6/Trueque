@@ -24,7 +24,7 @@ export default function StartScreen() {
           <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')} activeOpacity={0.85}>
             <Text style={styles.loginText}>Log in</Text>
           </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.7}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => router.replace('/(tabs)')}>
             <Text style={styles.guestText}>Continue as Guest</Text>
           </TouchableOpacity>
         </View>
