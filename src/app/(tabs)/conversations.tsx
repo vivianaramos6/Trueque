@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -91,9 +92,9 @@ const PREVIOUS: Conversation[] = [
   },
 ];
 
-function ConversationCard({ item }: { item: Conversation }) {
+function ConversationCard({ item, onPress }: { item: Conversation; onPress?: () => void }) {
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.8}>
+    <TouchableOpacity style={styles.card} activeOpacity={onPress ? 0.8 : 1} onPress={onPress}>
       {/* Avatar */}
       <View style={[styles.avatar, { backgroundColor: item.avatarBg }]}>
         <Text style={styles.initials}>{item.initials}</Text>
@@ -124,6 +125,7 @@ function ConversationCard({ item }: { item: Conversation }) {
 }
 
 export default function ConversationsScreen() {
+  const router = useRouter();
   const [tab, setTab] = useState<'ongoing' | 'previous'>('ongoing');
   const data = tab === 'ongoing' ? ONGOING : PREVIOUS;
 
@@ -180,7 +182,12 @@ export default function ConversationsScreen() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-          renderItem={({ item }) => <ConversationCard item={item} />}
+          renderItem={({ item }) => (
+            <ConversationCard
+              item={item}
+              onPress={item.id === '1' ? () => router.push('/chat') : undefined}
+            />
+          )}
         />
       </SafeAreaView>
     </LinearGradient>
