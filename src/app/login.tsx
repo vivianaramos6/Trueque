@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -21,7 +20,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   function handleLogin() {
-    Alert.alert('Logged in!', `Welcome${email ? `, ${email}` : ''}!`);
+    router.replace('/(tabs)');
   }
 
   return (
