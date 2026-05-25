@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
@@ -15,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -25,9 +27,14 @@ export default function LoginScreen() {
   return (
     <LinearGradient colors={['#faf5ec', '#cce0ff']} style={styles.gradient}>
       <SafeAreaView style={styles.safe}>
-<KeyboardAvoidingView
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.flex}>
+
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.6}>
+            <Text style={styles.backArrow}>‹</Text>
+          </TouchableOpacity>
+
           <ScrollView
             contentContainerStyle={styles.scroll}
             keyboardShouldPersistTaps="handled"
@@ -92,6 +99,7 @@ export default function LoginScreen() {
       </SafeAreaView>
     </LinearGradient>
   );
+
 }
 
 const styles = StyleSheet.create({
@@ -103,6 +111,18 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  backBtn: {
+    paddingHorizontal: 24,
+    paddingTop: 4,
+    paddingBottom: 2,
+    alignSelf: 'flex-start',
+  },
+  backArrow: {
+    fontSize: 34,
+    color: '#12213b',
+    fontWeight: '300',
+    lineHeight: 38,
   },
   scroll: {
     paddingHorizontal: 60,
