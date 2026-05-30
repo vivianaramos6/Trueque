@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -24,7 +25,11 @@ export default function SignUpScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   function handleSignUp() {
-    router.replace('/(tabs)');
+    Alert.alert(
+      'Account created!',
+      'Your account has been successfully created. Please log in to continue.',
+      [{ text: 'Log in', onPress: () => router.replace('/login') }]
+    );
   }
 
   return (
