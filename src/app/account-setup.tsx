@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { setIsGuest } from './store';
 import React, { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -85,8 +86,8 @@ export default function AccountSetupScreen() {
 
   function goNext() { setStep(s => s + 1); }
   function goBack() { step === 0 ? router.back() : setStep(s => s - 1); }
-  function continueLater() { router.replace('/(tabs)'); }
-  function finish() { router.replace('/(tabs)'); }
+  function continueLater() { setIsGuest(false); router.replace('/(tabs)'); }
+  function finish() { setIsGuest(false); router.replace('/(tabs)'); }
 
   function toggleSkill(skill: string, target: 'offer' | 'seek') {
     if (target === 'offer') {

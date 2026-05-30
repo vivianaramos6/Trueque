@@ -1,12 +1,20 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { getSarahStarted } from '../store';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { getIsGuest, getSarahStarted } from '../store';
+import { useState } from 'react';
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [showGuestModal, setShowGuestModal] = useState(false);
+
+  function handleRequest() {
+    if (getIsGuest()) { setShowGuestModal(true); return; }
+    getSarahStarted() ? router.push('/chat') : router.push('/trade-setup');
+  }
+
   return (
     <LinearGradient colors={['#cce0ff', '#f0f6ff', '#ffffff']} locations={[0, 0.4, 1]} style={styles.gradient}>
       <SafeAreaView style={styles.safe} edges={['top']}>
@@ -32,7 +40,7 @@ export default function HomeScreen() {
               <Text style={styles.providerName}>Sarah Levinson</Text>
               <Text style={styles.locationText}>San Juan, PR</Text>
             </View>
-            <TouchableOpacity style={styles.requestBtn} activeOpacity={0.85} onPress={() => getSarahStarted() ? router.push('/chat') : router.push('/trade-setup')}>
+            <TouchableOpacity style={styles.requestBtn} activeOpacity={0.85} onPress={handleRequest}>
               <Text style={styles.requestBtnText}>Request</Text>
             </TouchableOpacity>
           </View>
@@ -60,6 +68,23 @@ export default function HomeScreen() {
         <View style={styles.center}>
           <Text style={styles.dummy}>DUMMY</Text>
         </View>
+        <Modal visible={showGuestModal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>Sign in to Request</Text>
+              <Text style={styles.modalBody}>To request a trade you must be signed in.</Text>
+              <TouchableOpacity style={styles.modalBtnOutline} activeOpacity={0.85} onPress={() => setShowGuestModal(false)}>
+                <Text style={styles.modalBtnOutlineText}>Keep Browsing</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalBtnPrimary} activeOpacity={0.85} onPress={() => { setShowGuestModal(false); router.push('/login'); }}>
+                <Text style={styles.modalBtnText}>Log In</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalBtnOrange} activeOpacity={0.85} onPress={() => { setShowGuestModal(false); router.push('/signup'); }}>
+                <Text style={styles.modalBtnText}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -201,4 +226,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#c0c0c0',
   },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  modalBox: { backgroundColor: '#ffffff', borderRadius: 20, padding: 28, alignItems: 'center', width: '100%', gap: 12 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#12213b', textAlign: 'center' },
+  modalBody: { fontSize: 14, color: '#737d8a', textAlign: 'center', lineHeight: 20, marginBottom: 4 },
+  modalBtnOutline: { width: '100%', height: 48, borderRadius: 26, borderWidth: 2, borderColor: '#0050c8', justifyContent: 'center', alignItems: 'center' },
+  modalBtnOutlineText: { fontSize: 15, fontWeight: '600', color: '#0050c8' },
+  modalBtnPrimary: { width: '100%', height: 48, borderRadius: 26, backgroundColor: '#0050c8', justifyContent: 'center', alignItems: 'center' },
+  modalBtnOrange: { width: '100%', height: 48, borderRadius: 26, backgroundColor: '#f08c00', justifyContent: 'center', alignItems: 'center' },
+  modalBtnText: { fontSize: 15, fontWeight: '600', color: '#ffffff' },
 });

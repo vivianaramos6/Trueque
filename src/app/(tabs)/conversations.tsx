@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { getMessages, getSarahStarted, getTradeStatus } from '../store';
+import { getIsGuest, getMessages, getSarahStarted, getTradeStatus } from '../store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Conversation = {
@@ -165,6 +165,7 @@ export default function ConversationsScreen() {
     : PREVIOUS;
 
   const data = tab === 'ongoing' ? ongoingData : previousData;
+  const guest = getIsGuest();
 
   return (
     <LinearGradient
@@ -183,6 +184,19 @@ export default function ConversationsScreen() {
           />
         </View>
 
+        {guest ? (
+          <View style={styles.guestWall}>
+            <Text style={styles.guestWallTitle}>No conversations yet</Text>
+            <Text style={styles.guestWallBody}>Sign in or create an account to start trading skills.</Text>
+            <TouchableOpacity style={styles.guestBtnPrimary} activeOpacity={0.85} onPress={() => router.push('/login')}>
+              <Text style={styles.guestBtnText}>Log In</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.guestBtnOrange} activeOpacity={0.85} onPress={() => router.push('/signup')}>
+              <Text style={styles.guestBtnText}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+        <>
         {/* Tab pills */}
         <View style={styles.tabRow}>
           {/* On-going */}
@@ -228,6 +242,8 @@ export default function ConversationsScreen() {
             />
           )}
         />
+        </>
+        )}
       </SafeAreaView>
     </LinearGradient>
   );
@@ -407,4 +423,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  guestWall: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    gap: 12,
+  },
+  guestWallTitle: { fontSize: 20, fontWeight: '700', color: '#12213b', textAlign: 'center' },
+  guestWallBody: { fontSize: 14, color: '#737d8a', textAlign: 'center', lineHeight: 20, marginBottom: 8 },
+  guestBtnPrimary: { width: '100%', height: 48, borderRadius: 26, backgroundColor: '#0050c8', justifyContent: 'center', alignItems: 'center' },
+  guestBtnOrange: { width: '100%', height: 48, borderRadius: 26, backgroundColor: '#f08c00', justifyContent: 'center', alignItems: 'center' },
+  guestBtnText: { fontSize: 15, fontWeight: '600', color: '#ffffff' },
 });
