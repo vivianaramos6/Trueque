@@ -18,7 +18,7 @@ export default function StartScreen() {
           />
         </View>
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.signUpButton} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.signUpButton} activeOpacity={0.85} onPress={() => router.push('/signup')}>
             <Text style={styles.signUpText}>Sign Up</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')} activeOpacity={0.85}>
