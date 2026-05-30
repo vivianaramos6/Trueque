@@ -1,19 +1,53 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  cancelTrade,
+  confirmTrade,
+  getTradeDate,
+  getTradeLocation,
+  getTradeStatus,
+  getTradeTime,
+  resetConfirmation,
+  setTradeDetails,
+  startSarahConversation,
+} from './store';
 import { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+function isConfirmedStatus() {
+  const s = getTradeStatus();
+  return s === 'user_confirmed' || s === 'ongoing';
+}
+
 export default function TradeSetupScreen() {
   const router = useRouter();
+  const { fromChat } = useLocalSearchParams<{ fromChat?: string }>();
+  const [isReadonly, setIsReadonly] = useState(isConfirmedStatus);
   const [agreedTerms, setAgreedTerms] = useState(true);
   const [confirmedAvailability, setConfirmedAvailability] = useState(false);
-  const [location, setLocation] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  const [location, setLocation] = useState(getTradeLocation);
+  const [date, setDate] = useState(getTradeDate);
+  const [time, setTime] = useState(getTradeTime);
   const [showConfirmed, setShowConfirmed] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  function handleEdit() {
+    resetConfirmation();
+    setIsReadonly(false);
+    setAgreedTerms(false);
+    setConfirmedAvailability(false);
+  }
+
+  function handleConfirm() {
+    if (!agreedTerms || !confirmedAvailability) return;
+    setTradeDetails(location, date, time);
+    confirmTrade();
+    setIsReadonly(true);
+    setShowConfirmed(true);
+  }
 
   return (
     <LinearGradient colors={['#cce0ff', '#f0f6ff', '#faf5ec']} locations={[0, 0.3, 1]} style={styles.gradient}>
@@ -41,35 +75,51 @@ export default function TradeSetupScreen() {
             </View>
           </View>
 
-          <Text style={styles.detailsHeading}>Details</Text>
+          {/* Details heading + Edit/Cancel buttons */}
+          <View style={styles.detailsRow}>
+            <Text style={styles.detailsHeading}>Details</Text>
+            {isReadonly && (
+              <View style={styles.detailsActions}>
+                <TouchableOpacity style={styles.editBtn} onPress={handleEdit} activeOpacity={0.8}>
+                  <Text style={styles.editBtnText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowCancelConfirm(true)} activeOpacity={0.8}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
 
           <View style={styles.sessionsRow}>
-            {/* Your Session (editable) */}
+            {/* Your Session */}
             <View style={[styles.sessionCard, styles.sessionCardBlue]}>
               <Text style={styles.sessionTitle}>Your Session</Text>
               <Text style={styles.sessionFieldLabel}>Location</Text>
               <TextInput
-                style={styles.sessionInput}
+                style={[styles.sessionInput, isReadonly && styles.sessionInputReadonly]}
                 placeholder="Pueblo, PR"
                 placeholderTextColor="rgba(18,33,59,0.4)"
                 value={location}
                 onChangeText={setLocation}
+                editable={!isReadonly}
               />
               <Text style={styles.sessionFieldLabel}>Date</Text>
               <TextInput
-                style={styles.sessionInput}
+                style={[styles.sessionInput, isReadonly && styles.sessionInputReadonly]}
                 placeholder="May 20, 2026"
                 placeholderTextColor="rgba(18,33,59,0.4)"
                 value={date}
                 onChangeText={setDate}
+                editable={!isReadonly}
               />
               <Text style={styles.sessionFieldLabel}>Time</Text>
               <TextInput
-                style={[styles.sessionInput, { marginBottom: 0 }]}
+                style={[styles.sessionInput, { marginBottom: 0 }, isReadonly && styles.sessionInputReadonly]}
                 placeholder="6:00 – 7:00 pm"
                 placeholderTextColor="rgba(18,33,59,0.4)"
                 value={time}
                 onChangeText={setTime}
+                editable={!isReadonly}
               />
             </View>
 
@@ -97,45 +147,85 @@ export default function TradeSetupScreen() {
             <Ionicons name="calendar-outline" size={20} color="#737d8a" />
           </View>
 
-          <TouchableOpacity style={styles.checkboxRow} onPress={() => setAgreedTerms(!agreedTerms)} activeOpacity={0.8}>
-            <View style={[styles.checkbox, agreedTerms ? styles.checkboxOn : styles.checkboxOff]}>
-              {agreedTerms && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text style={styles.checkboxLabel}>I agree to the exchange terms</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.checkboxRow} onPress={() => setConfirmedAvailability(!confirmedAvailability)} activeOpacity={0.8}>
-            <View style={[styles.checkbox, confirmedAvailability ? styles.checkboxOn : styles.checkboxOff]}>
-              {confirmedAvailability && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text style={styles.checkboxLabel}>I confirm my availability</Text>
-          </TouchableOpacity>
-
-          <View style={styles.buttonsRow}>
-            <TouchableOpacity style={styles.btnMessage} activeOpacity={0.85} onPress={() => router.push('/chat')}>
-              <Text style={styles.btnMessageText}>MESSAGE</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.btnConfirm} activeOpacity={0.85} onPress={() => setShowConfirmed(true)}>
-              <Text style={styles.btnConfirmText}>CONFIRM</Text>
-            </TouchableOpacity>
-          </View>
+          {!isReadonly && (
+            <>
+              <TouchableOpacity style={styles.checkboxRow} onPress={() => setAgreedTerms(!agreedTerms)} activeOpacity={0.8}>
+                <View style={[styles.checkbox, agreedTerms ? styles.checkboxOn : styles.checkboxOff]}>
+                  {agreedTerms && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxLabel}>I agree to the exchange terms</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.checkboxRow} onPress={() => setConfirmedAvailability(!confirmedAvailability)} activeOpacity={0.8}>
+                <View style={[styles.checkbox, confirmedAvailability ? styles.checkboxOn : styles.checkboxOff]}>
+                  {confirmedAvailability && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxLabel}>I confirm my availability</Text>
+              </TouchableOpacity>
+              <View style={styles.buttonsRow}>
+                <TouchableOpacity style={styles.btnMessage} activeOpacity={0.85} onPress={() => { startSarahConversation(); router.push('/chat'); }}>
+                  <Text style={styles.btnMessageText}>MESSAGE</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.btnConfirm, (!agreedTerms || !confirmedAvailability) && styles.btnDisabled]}
+                  activeOpacity={(!agreedTerms || !confirmedAvailability) ? 1 : 0.85}
+                  onPress={handleConfirm}
+                >
+                  <Text style={styles.btnConfirmText}>CONFIRM</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </ScrollView>
 
-        {/* Request confirmed modal */}
+        {/* Confirmed modal */}
         <Modal visible={showConfirmed} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalBox}>
               <Text style={styles.modalTitle}>Request Sent!</Text>
               <Text style={styles.modalBody}>Your skill exchange request has been sent to Sarah Levinson.</Text>
-              <TouchableOpacity
-                style={styles.modalBtn}
-                activeOpacity={0.85}
-                onPress={() => {
-                  setShowConfirmed(false);
-                  router.replace('/(tabs)');
-                }}
-              >
-                <Text style={styles.modalBtnText}>Back to Home</Text>
-              </TouchableOpacity>
+              <View style={styles.modalBtnsRow}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalBtnOutline]}
+                  activeOpacity={0.85}
+                  onPress={() => { setShowConfirmed(false); router.replace('/(tabs)'); }}
+                >
+                  <Text style={styles.modalBtnOutlineText}>Home</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalBtn}
+                  activeOpacity={0.85}
+                  onPress={() => { setShowConfirmed(false); fromChat === '1' ? router.back() : router.replace('/chat'); }}
+                >
+                  <Text style={styles.modalBtnText}>Go to Chat</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        {/* Cancel confirmation modal */}
+        <Modal visible={showCancelConfirm} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>Cancel Trade?</Text>
+              <Text style={styles.modalBody}>
+                Are you sure you want to cancel this trade? The conversation will be moved to the <Text style={styles.modalBold}>Previous</Text> tab in Conversations.
+              </Text>
+              <View style={styles.modalBtnsRow}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalBtnOutline]}
+                  activeOpacity={0.85}
+                  onPress={() => setShowCancelConfirm(false)}
+                >
+                  <Text style={styles.modalBtnOutlineText}>Keep</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalBtnRed]}
+                  activeOpacity={0.85}
+                  onPress={() => { setShowCancelConfirm(false); cancelTrade(); router.back(); }}
+                >
+                  <Text style={styles.modalBtnText}>Cancel Trade</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -179,7 +269,13 @@ const styles = StyleSheet.create({
   exchangeLabel: { fontSize: 11, color: '#737d8a', marginBottom: 4 },
   exchangeValue: { fontSize: 14, fontWeight: '700', color: '#12213b' },
   exchangeArrow: { fontSize: 22, color: '#0050c8', marginHorizontal: 8 },
-  detailsHeading: { fontSize: 20, fontWeight: '700', color: '#12213b', marginBottom: 12 },
+  detailsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  detailsHeading: { fontSize: 20, fontWeight: '700', color: '#12213b' },
+  detailsActions: { flexDirection: 'row', gap: 8 },
+  editBtn: { backgroundColor: '#0050c8', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6 },
+  editBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '600' },
+  cancelBtn: { backgroundColor: '#ffffff', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1.5, borderColor: '#cc3333' },
+  cancelBtnText: { color: '#cc3333', fontSize: 13, fontWeight: '600' },
   sessionsRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   sessionCard: { flex: 1, borderRadius: 14, padding: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 10, elevation: 3 },
   sessionCardBlue: { backgroundColor: '#0050c8' },
@@ -187,6 +283,7 @@ const styles = StyleSheet.create({
   sessionTitle: { fontSize: 12, fontWeight: '600', color: '#ffffff', marginBottom: 10 },
   sessionFieldLabel: { fontSize: 10, color: 'rgba(255,255,255,0.85)', marginBottom: 4 },
   sessionInput: { backgroundColor: '#ffffff', borderRadius: 8, borderWidth: 1.5, borderColor: '#e0ebff', height: 30, paddingHorizontal: 8, fontSize: 11, color: '#12213b', marginBottom: 10 },
+  sessionInputReadonly: { opacity: 0.6 },
   sessionStatic: { backgroundColor: '#ffffff', borderRadius: 8, borderWidth: 1.5, borderColor: '#e0ebff', height: 30, paddingHorizontal: 8, justifyContent: 'center' },
   sessionStaticText: { fontSize: 11, color: '#12213b' },
   deadlineLabel: { fontSize: 14, fontWeight: '600', color: '#12213b', marginBottom: 8 },
@@ -203,10 +300,16 @@ const styles = StyleSheet.create({
   btnMessageText: { fontSize: 15, fontWeight: '600', color: '#0050c8' },
   btnConfirm: { flex: 1, height: 52, borderRadius: 26, backgroundColor: '#f08c00', justifyContent: 'center', alignItems: 'center' },
   btnConfirmText: { fontSize: 15, fontWeight: '600', color: '#ffffff' },
+  btnDisabled: { backgroundColor: '#c0c0c0' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
   modalBox: { backgroundColor: '#ffffff', borderRadius: 20, padding: 28, alignItems: 'center', width: '100%' },
   modalTitle: { fontSize: 20, fontWeight: '700', color: '#12213b', marginBottom: 10 },
   modalBody: { fontSize: 14, color: '#737d8a', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
-  modalBtn: { backgroundColor: '#f08c00', borderRadius: 26, height: 48, width: '100%', justifyContent: 'center', alignItems: 'center' },
+  modalBtnsRow: { flexDirection: 'row', gap: 10, width: '100%' },
+  modalBtn: { flex: 1, backgroundColor: '#f08c00', borderRadius: 26, height: 48, justifyContent: 'center', alignItems: 'center' },
   modalBtnText: { fontSize: 15, fontWeight: '600', color: '#ffffff' },
+  modalBtnOutline: { backgroundColor: '#ffffff', borderWidth: 2, borderColor: '#0050c8' },
+  modalBtnOutlineText: { fontSize: 15, fontWeight: '600', color: '#0050c8' },
+  modalBtnRed: { backgroundColor: '#cc3333' },
+  modalBold: { fontWeight: '700', color: '#12213b' },
 });
