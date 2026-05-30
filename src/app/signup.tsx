@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   loginText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#f08c02',
+    color: '#3b7fd4',
     textDecorationLine: 'underline',
   },
 });

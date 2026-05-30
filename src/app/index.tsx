@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   loginButton: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#3b7fd4',
     borderRadius: 50,
     width: '100%',
     height: 54,
@@ -81,12 +81,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loginText: {
-    color: '#000000',
+    color: '#ffffff',
     fontSize: 20,
     fontWeight: '500',
   },
   guestText: {
-    color: '#000000',
+    color: '#3b7fd4',
     fontSize: 20,
     fontWeight: '500',
     textDecorationLine: 'underline',

@@ -20,7 +20,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   function handleLogin() {
-    router.replace('/(tabs)');
+    router.replace('/account-setup');
   }
 
   return (
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   forgotText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#f08c02',
+    color: '#3b7fd4',
     textDecorationLine: 'underline',
   },
   actions: {
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   signUpText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#f08c02',
+    color: '#3b7fd4',
     textDecorationLine: 'underline',
   },
 });
