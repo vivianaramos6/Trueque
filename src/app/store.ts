@@ -5,6 +5,7 @@ export type Message = {
   time: string;
 };
 
+let isGuest = false;
 let sarahStarted = false;
 let tradeStatus: 'awaiting' | 'user_confirmed' | 'ongoing' | 'cancelled' | null = null;
 let messages: Message[] = [];
@@ -13,6 +14,9 @@ let sarahConfirmed = false;
 let tradeLocation = '';
 let tradeDate = '';
 let tradeTime = '';
+
+export const getIsGuest = () => isGuest;
+export const setIsGuest = (val: boolean) => { isGuest = val; };
 
 export const getSarahStarted = () => sarahStarted;
 export const getTradeStatus = () => tradeStatus;

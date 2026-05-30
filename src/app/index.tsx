@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { setIsGuest } from './store';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,7 +25,7 @@ export default function StartScreen() {
           <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')} activeOpacity={0.85}>
             <Text style={styles.loginText}>Log in</Text>
           </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.7} onPress={() => router.replace('/(tabs)')}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => { setIsGuest(true); router.replace('/(tabs)'); }}>
             <Text style={styles.guestText}>Continue as Guest</Text>
           </TouchableOpacity>
         </View>

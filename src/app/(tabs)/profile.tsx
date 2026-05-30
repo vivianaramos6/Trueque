@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { getIsGuest } from '../store';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -128,6 +129,25 @@ function ServiceCard({ service }: { service: ServiceCard }) {
 
 export default function ProfileScreen({ isOwnProfile = true }: ProfileScreenProps) {
   const router = useRouter();
+
+  if (getIsGuest()) {
+    return (
+      <LinearGradient colors={['#cce0ff', '#f0f6ff', '#ffffff']} locations={[0, 0.4, 1]} style={styles.gradient}>
+        <SafeAreaView style={styles.safe} edges={['top']}>
+          <View style={styles.guestWall}>
+            <Text style={styles.guestWallTitle}>Your Profile</Text>
+            <Text style={styles.guestWallBody}>Sign in or create an account to view and manage your profile.</Text>
+            <TouchableOpacity style={styles.guestBtnPrimary} activeOpacity={0.85} onPress={() => router.push('/login')}>
+              <Text style={styles.guestBtnText}>Log In</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.guestBtnOrange} activeOpacity={0.85} onPress={() => router.push('/signup')}>
+              <Text style={styles.guestBtnText}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient
@@ -604,4 +624,10 @@ const styles = StyleSheet.create({
     color: '#12213b',
     textAlign: 'center',
   },
+  guestWall: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 12 },
+  guestWallTitle: { fontSize: 24, fontWeight: '700', color: '#12213b', textAlign: 'center' },
+  guestWallBody: { fontSize: 14, color: '#737d8a', textAlign: 'center', lineHeight: 20, marginBottom: 8 },
+  guestBtnPrimary: { width: '100%', height: 48, borderRadius: 26, backgroundColor: '#0050c8', justifyContent: 'center', alignItems: 'center' },
+  guestBtnOrange: { width: '100%', height: 48, borderRadius: 26, backgroundColor: '#f08c00', justifyContent: 'center', alignItems: 'center' },
+  guestBtnText: { fontSize: 15, fontWeight: '600', color: '#ffffff' },
 });
