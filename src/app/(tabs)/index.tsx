@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { getSarahStarted } from '../store';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,7 +32,7 @@ export default function HomeScreen() {
               <Text style={styles.providerName}>Sarah Levinson</Text>
               <Text style={styles.locationText}>San Juan, PR</Text>
             </View>
-            <TouchableOpacity style={styles.requestBtn} activeOpacity={0.85} onPress={() => router.push('/trade-setup')}>
+            <TouchableOpacity style={styles.requestBtn} activeOpacity={0.85} onPress={() => getSarahStarted() ? router.push('/chat') : router.push('/trade-setup')}>
               <Text style={styles.requestBtnText}>Request</Text>
             </TouchableOpacity>
           </View>

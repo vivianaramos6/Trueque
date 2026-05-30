@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { getMessages, getSarahStarted, getTradeStatus } from '../store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Conversation = {
@@ -92,7 +93,12 @@ const PREVIOUS: Conversation[] = [
   },
 ];
 
-function ConversationCard({ item, onPress }: { item: Conversation; onPress?: () => void }) {
+function ConversationCard({ item, onPress, statusLabel, statusColor }: {
+  item: Conversation;
+  onPress?: () => void;
+  statusLabel?: string;
+  statusColor?: string;
+}) {
   return (
     <TouchableOpacity style={styles.card} activeOpacity={onPress ? 0.8 : 1} onPress={onPress}>
       {/* Avatar */}
@@ -103,8 +109,15 @@ function ConversationCard({ item, onPress }: { item: Conversation; onPress?: () 
       {/* Content */}
       <View style={styles.cardContent}>
         <Text style={styles.name}>{item.name}</Text>
-        <View style={styles.exchangeTag}>
-          <Text style={styles.exchangeText}>{item.exchange}</Text>
+        <View style={styles.tagRow}>
+          <View style={styles.exchangeTag}>
+            <Text style={styles.exchangeText}>{item.exchange}</Text>
+          </View>
+          {statusLabel && (
+            <View style={[styles.statusPill, { backgroundColor: statusColor }]}>
+              <Text style={styles.statusPillText}>{statusLabel}</Text>
+            </View>
+          )}
         </View>
         <Text style={styles.lastMessage} numberOfLines={1}>
           {item.lastMessage}
@@ -127,7 +140,31 @@ function ConversationCard({ item, onPress }: { item: Conversation; onPress?: () 
 export default function ConversationsScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<'ongoing' | 'previous'>('ongoing');
-  const data = tab === 'ongoing' ? ONGOING : PREVIOUS;
+  const [sarahVisible, setSarahVisible] = useState(false);
+  const [tradeStatus, setTradeStatus] = useState<'awaiting' | 'user_confirmed' | 'ongoing' | 'cancelled' | null>(null);
+  const [sarahLastMessage, setSarahLastMessage] = useState<string | null>(null);
+
+  useFocusEffect(useCallback(() => {
+    setSarahVisible(getSarahStarted());
+    setTradeStatus(getTradeStatus());
+    const msgs = getMessages();
+    if (msgs.length > 0) {
+      const last = msgs[msgs.length - 1];
+      setSarahLastMessage((last.sent ? 'You: ' : '') + last.text);
+    }
+  }, []));
+
+  const sarahCancelled = sarahVisible && tradeStatus === 'cancelled';
+
+  const ongoingData = (sarahVisible && !sarahCancelled ? ONGOING : ONGOING.filter(c => c.id !== '1')).map(c =>
+    c.id === '1' ? { ...c, lastMessage: sarahLastMessage ?? '' } : c
+  );
+
+  const previousData = sarahCancelled
+    ? [{ ...ONGOING[0], lastMessage: sarahLastMessage ?? '', unread: 0 }, ...PREVIOUS]
+    : PREVIOUS;
+
+  const data = tab === 'ongoing' ? ongoingData : previousData;
 
   return (
     <LinearGradient
@@ -156,7 +193,7 @@ export default function ConversationsScreen() {
           >
             <Text style={tab === 'ongoing' ? styles.pillTextActive : styles.pillTextInactive}>On-going</Text>
             <View style={tab === 'ongoing' ? styles.badgeOrange : styles.badgeGray}>
-              <Text style={styles.badgeText}>{ONGOING.length}</Text>
+              <Text style={styles.badgeText}>{ongoingData.length}</Text>
             </View>
           </TouchableOpacity>
 
@@ -170,7 +207,7 @@ export default function ConversationsScreen() {
               Previous
             </Text>
             <View style={tab === 'previous' ? styles.badgeOrange : styles.badgeGray}>
-              <Text style={styles.badgeText}>{PREVIOUS.length}</Text>
+              <Text style={styles.badgeText}>{previousData.length}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -186,6 +223,8 @@ export default function ConversationsScreen() {
             <ConversationCard
               item={item}
               onPress={item.id === '1' ? () => router.push('/chat') : undefined}
+              statusLabel={item.id === '1' && tradeStatus && tradeStatus !== 'cancelled' ? (tradeStatus === 'ongoing' ? 'On-going' : 'Awaiting') : undefined}
+              statusColor={item.id === '1' && tradeStatus && tradeStatus !== 'cancelled' ? (tradeStatus === 'ongoing' ? '#57cc78' : '#f08c00') : undefined}
             />
           )}
         />
@@ -315,6 +354,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#12213b',
   },
+  tagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   exchangeTag: {
     backgroundColor: '#cce0ff',
     borderRadius: 8,
@@ -326,6 +370,16 @@ const styles = StyleSheet.create({
     color: '#0050c8',
     fontSize: 10,
     fontWeight: '500',
+  },
+  statusPill: {
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  statusPillText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '600',
   },
   lastMessage: {
     fontSize: 12,

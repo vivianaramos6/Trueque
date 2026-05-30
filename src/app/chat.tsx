@@ -1,6 +1,16 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import {
+  getMessages,
+  getSarahConfirmed,
+  getTradeStatus,
+  Message,
+  sarahConfirmTrade,
+  setMessages as storeSetMessages,
+  setSarahConfirmed as storeSetSarahConfirmed,
+} from './store';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -13,22 +23,105 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type Message = {
-  id: string;
-  text: string;
-  sent: boolean;
-  time: string;
-};
+const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY!;
 
-const MESSAGES: Message[] = [
-  { id: '1', text: 'Hey! Sounds good to me', sent: true, time: '10:32 AM' },
-  { id: '2', text: "Great, let's lock it in!", sent: false, time: '10:33 AM' },
-  { id: '3', text: 'See you Tuesday!', sent: true, time: '10:34 AM' },
-];
+const SARAH_SYSTEM = `You are Sarah, a 26 year old guitar teacher chatting on Trueque, a skill-exchange app. You're exchanging guitar lessons for Python tutoring. Texting style, lowercase, keep it to 1-2 sentences. Be warm and curious — ask about their experience level, when they're free, where they're located. If they go off topic reply: "haha let's stay on topic 😄". Do not use exclamation marks unless it genuinely fits.`;
+
+async function getSarahReply(history: Message[]): Promise<string> {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'llama-3.1-8b-instant',
+      max_tokens: 80,
+      messages: [
+        { role: 'system', content: SARAH_SYSTEM },
+        ...history.map(m => ({ role: m.sent ? 'user' : 'assistant', content: m.text })),
+      ],
+    }),
+  });
+  const data = await response.json();
+  return data.choices[0].message.content as string;
+}
+
+let _id = 0;
+function makeId() { return `${Date.now()}_${++_id}`; }
+
+function nowTime() {
+  const d = new Date();
+  const h = d.getHours() % 12 || 12;
+  const m = d.getMinutes().toString().padStart(2, '0');
+  return `${h}:${m} ${d.getHours() >= 12 ? 'PM' : 'AM'}`;
+}
 
 export default function ChatScreen() {
   const router = useRouter();
+  const [messages, setMessagesState] = useState<Message[]>(getMessages());
+  const [status, setStatus] = useState(getTradeStatus());
+
+  const [isTyping, setIsTyping] = useState(false);
   const [message, setMessage] = useState('');
+  const scrollRef = useRef<ScrollView>(null);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function updateMessages(msgs: Message[]) {
+    setMessagesState(msgs);
+    storeSetMessages(msgs);
+  }
+
+  useFocusEffect(useCallback(() => {
+    const currentStatus = getTradeStatus();
+    setStatus(currentStatus);
+
+    if (currentStatus === 'user_confirmed' && !getSarahConfirmed() && !confirmTimerRef.current) {
+      confirmTimerRef.current = setTimeout(() => {
+        confirmTimerRef.current = null;
+        storeSetSarahConfirmed(true);
+        sarahConfirmTrade();
+        setStatus('ongoing');
+        const confirmMsg: Message = { id: makeId(), text: "just confirmed my side too btw 👍", sent: false, time: nowTime() };
+        updateMessages([...getMessages(), confirmMsg]);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+      }, 4000);
+      return () => {
+        clearTimeout(confirmTimerRef.current!);
+        confirmTimerRef.current = null;
+      };
+    }
+  }, []));
+
+  async function sendMessage() {
+    const text = message.trim();
+    if (!text) return;
+    const userMsg: Message = { id: makeId(), text, sent: true, time: nowTime() };
+    const updatedHistory = [...messages, userMsg];
+    updateMessages(updatedHistory);
+    setMessage('');
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+
+    setIsTyping(true);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+
+    try {
+      const reply = await getSarahReply(updatedHistory);
+      setTimeout(() => {
+        setIsTyping(false);
+        const replyMsg: Message = { id: makeId(), text: reply, sent: false, time: nowTime() };
+        updateMessages([...updatedHistory, replyMsg]);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+      }, 800);
+    } catch {
+      setTimeout(() => {
+        setIsTyping(false);
+        const errMsg: Message = { id: makeId(), text: "Sorry, give me a sec! 😅", sent: false, time: nowTime() };
+        updateMessages([...updatedHistory, errMsg]);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+      }, 800);
+    }
+  }
 
   return (
     <LinearGradient colors={['#cce0ff', '#faf5ec']} style={styles.gradient}>
@@ -58,40 +151,45 @@ export default function ChatScreen() {
 
           <View style={styles.headerDivider} />
 
-          {/* Messages area */}
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Exchange card */}
+          {/* Exchange card or Request button – sticky */}
+          {status === 'cancelled' ? (
+            <TouchableOpacity style={styles.requestBanner} onPress={() => router.push({ pathname: '/trade-setup', params: { fromChat: '1' } })} activeOpacity={0.85}>
+              <Text style={styles.requestBannerText}>Request a New Trade</Text>
+            </TouchableOpacity>
+          ) : (
             <View style={styles.exchangeCard}>
               <View style={styles.pillRow}>
-                <View style={styles.statusPill}>
-                  <Text style={styles.statusText}>On-going</Text>
+                <View style={[styles.statusPill, { backgroundColor: status === 'ongoing' ? '#57cc78' : '#f08c00' }]}>
+                  <Text style={styles.statusText}>{status === 'ongoing' ? 'On-going' : 'Awaiting Confirmation'}</Text>
                 </View>
               </View>
               <View style={styles.tradeRow}>
                 <View style={styles.tradeColLeft}>
                   <Text style={styles.tradeLabel}>You Receive:</Text>
-                  <Text style={styles.tradeValue}>Python Tutoring</Text>
+                  <Text style={styles.tradeValue}>Guitar Lessons</Text>
                 </View>
                 <Text style={styles.tradeArrow}>⇄</Text>
                 <View style={styles.tradeColRight}>
                   <Text style={styles.tradeLabel}>You Offer:</Text>
-                  <Text style={styles.tradeValue}>Guitar Lessons</Text>
+                  <Text style={styles.tradeValue}>Python Tutoring</Text>
                 </View>
               </View>
-              <View style={styles.viewTradeRow}>
+              <TouchableOpacity style={styles.viewTradeRow} onPress={() => router.push({ pathname: '/trade-setup', params: { fromChat: '1' } })}>
                 <Text style={styles.viewTradeText}>View Trade ›</Text>
-              </View>
+              </TouchableOpacity>
             </View>
+          )}
 
-            {/* Date separator */}
+          {/* Messages area */}
+          <ScrollView
+            ref={scrollRef}
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             <Text style={styles.dateSep}>Today</Text>
 
-            {/* Messages */}
-            {MESSAGES.map((msg) => (
+            {messages.map((msg) => (
               <View
                 key={msg.id}
                 style={[styles.msgGroup, msg.sent ? styles.msgGroupSent : styles.msgGroupReceived]}
@@ -104,6 +202,13 @@ export default function ChatScreen() {
                 </Text>
               </View>
             ))}
+            {isTyping && (
+              <View style={styles.msgGroupReceived}>
+                <View style={styles.typingBubble}>
+                  <Text style={styles.typingDots}>• • •</Text>
+                </View>
+              </View>
+            )}
           </ScrollView>
 
           {/* Input bar */}
@@ -118,8 +223,10 @@ export default function ChatScreen() {
               placeholderTextColor="#999999"
               value={message}
               onChangeText={setMessage}
+              onSubmitEditing={sendMessage}
+              returnKeyType="send"
             />
-            <TouchableOpacity style={styles.sendBtn}>
+            <TouchableOpacity style={styles.sendBtn} onPress={sendMessage}>
               <Text style={styles.sendText}>▶</Text>
             </TouchableOpacity>
           </View>
@@ -205,6 +312,21 @@ const styles = StyleSheet.create({
     gap: 0,
   },
 
+  // ── Request banner (cancelled state) ──────────────────────────────────
+  requestBanner: {
+    backgroundColor: '#0050c8',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  requestBannerText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
   // ── Exchange card ─────────────────────────────────────────────────────
   exchangeCard: {
     backgroundColor: '#ffffff',
@@ -217,14 +339,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.07,
     shadowRadius: 10,
     elevation: 3,
-    marginBottom: 20,
+    marginBottom: 8,
   },
   pillRow: {
     alignItems: 'center',
     marginBottom: 10,
   },
   statusPill: {
-    backgroundColor: '#57cc78',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 4,
@@ -294,8 +415,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderTopRightRadius: 4,
     paddingHorizontal: 14,
-    height: 40,
-    justifyContent: 'center',
+    paddingVertical: 10,
     maxWidth: 250,
   },
   bubbleReceived: {
@@ -303,13 +423,24 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderTopLeftRadius: 4,
     paddingHorizontal: 14,
-    height: 40,
-    justifyContent: 'center',
+    paddingVertical: 10,
     maxWidth: 250,
   },
   bubbleText: {
     color: '#ffffff',
     fontSize: 14,
+  },
+  typingBubble: {
+    backgroundColor: '#f08c02',
+    borderRadius: 18,
+    borderTopLeftRadius: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  typingDots: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    letterSpacing: 2,
   },
   timestamp: {
     fontSize: 10,
