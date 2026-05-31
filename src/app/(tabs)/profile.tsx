@@ -27,35 +27,35 @@ interface ProfileScreenProps {
 const SAMPLE_SERVICES: ServiceCard[] = [
   {
     id: '1',
-    title: 'Guitar Lessons',
-    description: 'Acoustic and electric guitar for all levels. Patient instructor with 5+ years of experience.',
-    tags: ['Guitar', 'Music'],
-    exchange: 'Python',
+    title: 'Python Tutoring',
+    description: 'Python for beginners to intermediate. Data structures, scripting, and real projects.',
+    tags: ['Python', 'Coding'],
+    exchange: 'Guitar Lessons',
   },
   {
     id: '2',
-    title: 'Music Production Basics',
-    description: 'Learn the fundamentals of recording and mixing music in modern DAWs.',
-    tags: ['Production', 'Music'],
-    exchange: 'Web Design',
+    title: 'Web Development',
+    description: 'Modern web apps with React and TypeScript. UI/UX focused development.',
+    tags: ['Coding', 'Web'],
+    exchange: 'Music Lessons',
   },
 ];
 
-const LOOKING_FOR = ['Python', 'Web Design', 'Photography'];
+const LOOKING_FOR = ['Guitar Lessons', 'Music', 'Spanish'];
 
 const SAMPLE_REVIEWS: Review[] = [
   {
     id: '1',
-    author: 'Alex Rivera',
+    author: 'James Park',
     rating: 5,
-    text: 'Sarah was an excellent teacher! Very patient and knowledgeable.',
+    text: 'Daniel explained Python concepts clearly and was very patient throughout.',
     date: '2 weeks ago',
   },
   {
     id: '2',
-    author: 'Maria Lopez',
-    rating: 4,
-    text: 'Great lessons, definitely improved my playing.',
+    author: 'Laura Méndez',
+    rating: 5,
+    text: 'Great tutor, helped me build my first web app. Highly recommend!',
     date: '1 month ago',
   },
 ];
@@ -175,19 +175,19 @@ export default function ProfileScreen({ isOwnProfile = true }: ProfileScreenProp
             )}
 
             <View style={styles.centerContent}>
-              <View style={styles.largeAvatar}>
-                <Text style={styles.largeAvatarText}>SL</Text>
+              <View style={[styles.largeAvatar, { backgroundColor: '#3aab82' }]}>
+                <Text style={styles.largeAvatarText}>DR</Text>
               </View>
 
               <View style={styles.profileInfoContainer}>
-                <Text style={styles.profileName}>Sarah Levinson</Text>
+                <Text style={styles.profileName}>Daniel Rivera</Text>
                 <View style={styles.locationRow}>
-                  <Text style={styles.locationText}>📍 San Juan, PR</Text>
+                  <Text style={styles.locationText}>📍 Tucson, AZ</Text>
                 </View>
               </View>
 
               <View style={styles.skillTagsContainer}>
-                {['Guitar', 'Music Teaching', 'Music Production'].map((skill) => (
+                {['Python', 'Web Dev', 'Coding'].map((skill) => (
                   <View key={skill} style={styles.skillTag}>
                     <Text style={styles.skillTagText}>{skill}</Text>
                   </View>
@@ -200,7 +200,7 @@ export default function ProfileScreen({ isOwnProfile = true }: ProfileScreenProp
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Bio</Text>
             <Text style={styles.bioText}>
-              Passionate music educator with 5+ years of experience teaching guitar. Love connecting with people and sharing knowledge through skill exchanges.
+              CS student passionate about coding and building things. Looking to expand my skills beyond tech through meaningful skill exchanges in my community.
             </Text>
           </View>
 
@@ -251,11 +251,11 @@ export default function ProfileScreen({ isOwnProfile = true }: ProfileScreenProp
             <View style={styles.certificationsContainer}>
               <TouchableOpacity style={styles.certPlaceholder} activeOpacity={0.8}>
                 <Text style={styles.certPlaceholderText}>📄</Text>
-                <Text style={styles.certPlaceholderLabel}>Guitar Teaching Certificate</Text>
+                <Text style={styles.certPlaceholderLabel}>Python Developer Certificate</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.certPlaceholder} activeOpacity={0.8}>
                 <Text style={styles.certPlaceholderText}>📄</Text>
-                <Text style={styles.certPlaceholderLabel}>Music Production Basics</Text>
+                <Text style={styles.certPlaceholderLabel}>React & Web Development</Text>
               </TouchableOpacity>
             </View>
           </View>
