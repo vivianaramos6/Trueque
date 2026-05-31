@@ -1,16 +1,17 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getIsGuest } from '../store';
+import { deleteService, getIsGuest, getServices, ServiceItem } from '../store';
 
-type ServiceCard = {
-  id: string;
-  title: string;
-  description: string;
-  tags: string[];
-  exchange: string;
-};
+const PRESET_SKILLS = [
+  'Web Development', 'Graphic Design', 'Photography', 'Video Editing',
+  'Music Production', 'Writing', 'Translation', 'Tutoring', 'Cooking',
+  'Fitness Training', 'Plumbing', 'Carpentry', 'Painting', 'Gardening',
+  'Pet Care', 'Accounting', 'Marketing', 'Social Media', 'Sewing', 'Baking',
+  'Guitar Lessons', 'Music', 'Spanish', 'Python', 'Coding',
+];
 
 type Review = {
   id: string;
@@ -20,28 +21,22 @@ type Review = {
   date: string;
 };
 
+type Cert = {
+  id: string;
+  label: string;
+};
+
 interface ProfileScreenProps {
   isOwnProfile?: boolean;
 }
 
-const SAMPLE_SERVICES: ServiceCard[] = [
-  {
-    id: '1',
-    title: 'Python Tutoring',
-    description: 'Python for beginners to intermediate. Data structures, scripting, and real projects.',
-    tags: ['Python', 'Coding'],
-    exchange: 'Guitar Lessons',
-  },
-  {
-    id: '2',
-    title: 'Web Development',
-    description: 'Modern web apps with React and TypeScript. UI/UX focused development.',
-    tags: ['Coding', 'Web'],
-    exchange: 'Music Lessons',
-  },
-];
 
-const LOOKING_FOR = ['Guitar Lessons', 'Music', 'Spanish'];
+const INITIAL_LOOKING_FOR = ['Guitar Lessons', 'Music', 'Spanish'];
+
+const INITIAL_CERTS: Cert[] = [
+  { id: '1', label: 'Python Developer Certificate' },
+  { id: '2', label: 'React & Web Development' },
+];
 
 const SAMPLE_REVIEWS: Review[] = [
   {
@@ -60,25 +55,11 @@ const SAMPLE_REVIEWS: Review[] = [
   },
 ];
 
-function SkillChip({ label, onPress }: { label: string; onPress?: () => void }) {
-  return (
-    <TouchableOpacity
-      style={styles.skillChip}
-      activeOpacity={0.8}
-      onPress={onPress}
-    >
-      <Text style={styles.skillChipText}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 function StarRating({ rating }: { rating: number }) {
   return (
     <View style={styles.starsRow}>
       {[1, 2, 3, 4, 5].map((i) => (
-        <Text key={i} style={styles.star}>
-          {i <= rating ? '★' : '☆'}
-        </Text>
+        <Text key={i} style={styles.star}>{i <= rating ? '★' : '☆'}</Text>
       ))}
     </View>
   );
@@ -104,31 +85,35 @@ function ReviewCard({ review }: { review: Review }) {
   );
 }
 
-function ServiceCard({ service }: { service: ServiceCard }) {
-  return (
-    <View style={styles.serviceCard}>
-      <View style={styles.serviceCardTop}>
-        <View>
-          <Text style={styles.serviceTitle}>{service.title}</Text>
-          <View style={styles.exchangeBadge}>
-            <Text style={styles.exchangeText}>↔ {service.exchange}</Text>
-          </View>
-        </View>
-      </View>
-      <Text style={styles.serviceDescription}>{service.description}</Text>
-      <View style={styles.tagsRow}>
-        {service.tags.map((tag) => (
-          <View key={tag} style={styles.tag}>
-            <Text style={styles.tagText}>{tag}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
 export default function ProfileScreen({ isOwnProfile = true }: ProfileScreenProps) {
   const router = useRouter();
+  const [isEditing, setIsEditing] = useState(false);
+  const [bio, setBio] = useState('CS student passionate about coding and building things. Looking to expand my skills beyond tech through meaningful skill exchanges in my community.');
+  const [services, setServices] = useState<ServiceItem[]>(getServices());
+  const [lookingFor, setLookingFor] = useState<string[]>(INITIAL_LOOKING_FOR);
+  const [certs, setCerts] = useState<Cert[]>(INITIAL_CERTS);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [showSkillModal, setShowSkillModal] = useState(false);
+
+  useFocusEffect(useCallback(() => {
+    setServices(getServices());
+  }, []));
+
+  function removeService(id: string) {
+    deleteService(id);
+    setServices(getServices());
+    setDeleteTarget(null);
+  }
+
+  function toggleSkill(skill: string) {
+    setLookingFor(prev =>
+      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+    );
+  }
+
+  function removeCert(id: string) {
+    setCerts(prev => prev.filter(c => c.id !== id));
+  }
 
   if (getIsGuest()) {
     return (
@@ -150,11 +135,7 @@ export default function ProfileScreen({ isOwnProfile = true }: ProfileScreenProp
   }
 
   return (
-    <LinearGradient
-      colors={['#cce0ff', '#f0f6ff', '#ffffff']}
-      locations={[0, 0.4, 1]}
-      style={styles.gradient}
-    >
+    <LinearGradient colors={['#cce0ff', '#f0f6ff', '#ffffff']} locations={[0, 0.4, 1]} style={styles.gradient}>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -165,27 +146,28 @@ export default function ProfileScreen({ isOwnProfile = true }: ProfileScreenProp
           <View style={styles.headerSection}>
             {isOwnProfile && (
               <View style={styles.headerButtonsContainer}>
-                <TouchableOpacity style={styles.editButtonTop} activeOpacity={0.8}>
-                  <Text style={styles.editButtonText}>Edit</Text>
+                <TouchableOpacity
+                  style={[styles.editButtonTop, isEditing && styles.editButtonTopDone]}
+                  activeOpacity={0.8}
+                  onPress={() => setIsEditing(!isEditing)}
+                >
+                  <Text style={styles.editButtonText}>{isEditing ? 'Done' : 'Edit'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.settingsButtonTop} activeOpacity={0.8} onPress={() => router.push('/account-settings')}>
                   <Text style={styles.settingsButtonText}>⚙</Text>
                 </TouchableOpacity>
               </View>
             )}
-
             <View style={styles.centerContent}>
               <View style={[styles.largeAvatar, { backgroundColor: '#3aab82' }]}>
                 <Text style={styles.largeAvatarText}>DR</Text>
               </View>
-
               <View style={styles.profileInfoContainer}>
                 <Text style={styles.profileName}>Daniel Rivera</Text>
                 <View style={styles.locationRow}>
                   <Text style={styles.locationText}>📍 Tucson, AZ</Text>
                 </View>
               </View>
-
               <View style={styles.skillTagsContainer}>
                 {['Python', 'Web Dev', 'Coding'].map((skill) => (
                   <View key={skill} style={styles.skillTag}>
@@ -196,21 +178,83 @@ export default function ProfileScreen({ isOwnProfile = true }: ProfileScreenProp
             </View>
           </View>
 
-          {/* ─── Bio Section ─── */}
+          {/* ─── Bio ─── */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Bio</Text>
-            <Text style={styles.bioText}>
-              CS student passionate about coding and building things. Looking to expand my skills beyond tech through meaningful skill exchanges in my community.
-            </Text>
+            {isEditing ? (
+              <>
+                <TextInput
+                  style={styles.bioInput}
+                  value={bio}
+                  onChangeText={setBio}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  placeholderTextColor="#737d8a"
+                />
+                <TouchableOpacity style={styles.submitBioBtn} activeOpacity={0.85}>
+                  <Text style={styles.submitBioBtnText}>Submit</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={styles.bioText}>{bio}</Text>
+            )}
           </View>
 
           {/* ─── Currently Offering ─── */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Currently Offering</Text>
             <View style={styles.servicesContainer}>
-              {SAMPLE_SERVICES.map((service) => (
-                <ServiceCard key={service.id} service={service} />
+              {services.map((service) => (
+                <View key={service.id} style={styles.serviceCardWrapper}>
+                  {isEditing && (
+                    <TouchableOpacity
+                      style={styles.deleteServiceBtn}
+                      onPress={() => setDeleteTarget(service.id)}
+                      hitSlop={8}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.deleteServiceBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                  <View style={styles.serviceCard}>
+                    <View style={styles.serviceCardTop}>
+                      <View>
+                        <Text style={styles.serviceTitle}>{service.title}</Text>
+                        <View style={styles.exchangeBadge}>
+                          <Text style={styles.exchangeText}>↔ {service.exchange}</Text>
+                        </View>
+                      </View>
+                    </View>
+                    <Text style={styles.serviceDescription}>{service.description}</Text>
+                    <View style={styles.tagsRow}>
+                      {service.tags.map((tag) => (
+                        <View key={tag} style={styles.tag}>
+                          <Text style={styles.tagText}>{tag}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    {isEditing && (
+                      <TouchableOpacity
+                        style={styles.editServiceBtn}
+                        onPress={() => router.push({ pathname: '/add-skill', params: { id: service.id } })}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.editServiceBtnText}>Edit Service</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
               ))}
+              {isEditing && (
+                <TouchableOpacity
+                  style={styles.addServiceBtn}
+                  onPress={() => router.push('/add-skill')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.addServiceBtnText}>+ Add Service</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -218,9 +262,22 @@ export default function ProfileScreen({ isOwnProfile = true }: ProfileScreenProp
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Looking For</Text>
             <View style={styles.lookingForChips}>
-              {LOOKING_FOR.map((skill) => (
-                <SkillChip key={skill} label={skill} />
+              {lookingFor.map((skill) => (
+                isEditing ? (
+                  <TouchableOpacity key={skill} style={styles.skillChipEditing} onPress={() => toggleSkill(skill)} activeOpacity={0.8}>
+                    <Text style={styles.skillChipText}>{skill}  ✕</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View key={skill} style={styles.skillChip}>
+                    <Text style={styles.skillChipText}>{skill}</Text>
+                  </View>
+                )
               ))}
+              {isEditing && (
+                <TouchableOpacity style={styles.addSkillBtn} onPress={() => setShowSkillModal(true)} activeOpacity={0.8}>
+                  <Text style={styles.addSkillBtnText}>+ Add Skill</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -234,32 +291,89 @@ export default function ProfileScreen({ isOwnProfile = true }: ProfileScreenProp
                 </TouchableOpacity>
               )}
             </View>
-            {SAMPLE_REVIEWS.length === 0 ? (
-              <Text style={styles.emptyText}>No reviews yet</Text>
-            ) : (
-              <View style={styles.reviewsContainer}>
-                {SAMPLE_REVIEWS.map((review) => (
-                  <ReviewCard key={review.id} review={review} />
-                ))}
-              </View>
+            {isEditing && (
+              <Text style={styles.reviewsNote}>Reviews cannot be edited</Text>
             )}
+            <View style={styles.reviewsContainer}>
+              {SAMPLE_REVIEWS.map((review) => (
+                <ReviewCard key={review.id} review={review} />
+              ))}
+            </View>
           </View>
 
           {/* ─── Certifications ─── */}
           <View style={[styles.section, styles.lastSection]}>
             <Text style={styles.sectionTitle}>Certifications</Text>
             <View style={styles.certificationsContainer}>
-              <TouchableOpacity style={styles.certPlaceholder} activeOpacity={0.8}>
-                <Text style={styles.certPlaceholderText}>📄</Text>
-                <Text style={styles.certPlaceholderLabel}>Python Developer Certificate</Text>
+              {certs.map((cert) => (
+                <View key={cert.id} style={styles.certWrapper}>
+                  {isEditing && (
+                    <TouchableOpacity style={styles.deleteCertBtn} onPress={() => removeCert(cert.id)} hitSlop={8} activeOpacity={0.7}>
+                      <Text style={styles.deleteCertBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={styles.certPlaceholder} activeOpacity={0.8}>
+                    <Text style={styles.certPlaceholderText}>📄</Text>
+                    <Text style={styles.certPlaceholderLabel}>{cert.label}</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+            {isEditing && (
+              <TouchableOpacity style={styles.addCertBtn} activeOpacity={0.85}>
+                <Text style={styles.addCertBtnText}>+ Add Certification</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.certPlaceholder} activeOpacity={0.8}>
-                <Text style={styles.certPlaceholderText}>📄</Text>
-                <Text style={styles.certPlaceholderLabel}>React & Web Development</Text>
-              </TouchableOpacity>
+            )}
+          </View>
+
+        </ScrollView>
+
+        {/* ─── Delete Service Modal ─── */}
+        <Modal visible={deleteTarget !== null} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>This action cannot be undone.</Text>
+              <Text style={styles.modalBody}>Proceed?</Text>
+              <View style={styles.modalBtnsRow}>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnOutline]} activeOpacity={0.85} onPress={() => setDeleteTarget(null)}>
+                  <Text style={styles.modalBtnOutlineText}>Return</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnRed]} activeOpacity={0.85} onPress={() => deleteTarget && removeService(deleteTarget)}>
+                  <Text style={styles.modalBtnText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </ScrollView>
+        </Modal>
+
+        {/* ─── Skill Picker Modal ─── */}
+        <Modal visible={showSkillModal} animationType="slide" transparent>
+          <Pressable style={styles.skillModalOverlay} onPress={() => setShowSkillModal(false)}>
+            <View style={styles.skillModalSheet}>
+              <Text style={styles.skillModalTitle}>Skills you're looking for</Text>
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.skillModalScroll}>
+                <View style={styles.skillModalChips}>
+                  {PRESET_SKILLS.map((skill) => (
+                    <TouchableOpacity
+                      key={skill}
+                      style={lookingFor.includes(skill) ? styles.chipSelected : styles.chipUnselected}
+                      onPress={() => toggleSkill(skill)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={lookingFor.includes(skill) ? styles.chipSelectedText : styles.chipUnselectedText}>
+                        {skill}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+              <TouchableOpacity style={styles.skillModalDoneBtn} onPress={() => setShowSkillModal(false)} activeOpacity={0.85}>
+                <Text style={styles.skillModalDoneBtnText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
+
       </SafeAreaView>
     </LinearGradient>
   );
@@ -274,7 +388,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
 
-  // ─── Header Section ───
+  // ─── Header ───
   headerSection: {
     position: 'relative',
     marginBottom: 28,
@@ -300,51 +414,15 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  editButtonTopDone: {
+    backgroundColor: '#f08c00',
+  },
   editButtonText: {
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '700',
   },
   settingsButtonTop: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#0050c8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 10,
-  },
-  profileTop: {
-    position: 'relative',
-    marginBottom: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  largeAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#0050c8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  largeAvatarText: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  settingsButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -366,9 +444,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 12,
   },
-  profileInfoContainer: {
+  largeAvatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
+  largeAvatarText: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  profileInfoContainer: { alignItems: 'center' },
   profileName: {
     fontSize: 24,
     fontWeight: '700',
@@ -404,12 +497,8 @@ const styles = StyleSheet.create({
   },
 
   // ─── Sections ───
-  section: {
-    marginBottom: 24,
-  },
-  lastSection: {
-    marginBottom: 8,
-  },
+  section: { marginBottom: 24 },
+  lastSection: { marginBottom: 8 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -422,11 +511,6 @@ const styles = StyleSheet.create({
     color: '#12213b',
     marginBottom: 12,
   },
-  addButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0050c8',
-  },
 
   // ─── Bio ───
   bioText: {
@@ -434,10 +518,52 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: '#737d8a',
   },
+  bioInput: {
+    backgroundColor: '#f0f6ff',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#e0ebff',
+    padding: 12,
+    fontSize: 13,
+    color: '#12213b',
+    lineHeight: 20,
+    minHeight: 90,
+    marginBottom: 10,
+  },
+  submitBioBtn: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#0050c8',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  submitBioBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
 
   // ─── Currently Offering ───
-  servicesContainer: {
-    gap: 10,
+  servicesContainer: { gap: 10 },
+  serviceCardWrapper: {
+    position: 'relative',
+  },
+  deleteServiceBtn: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    zIndex: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#cc3333',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteServiceBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#ffffff',
   },
   serviceCard: {
     backgroundColor: '#ffffff',
@@ -495,6 +621,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ffffff',
   },
+  editServiceBtn: {
+    marginTop: 10,
+    borderWidth: 1.5,
+    borderColor: '#0050c8',
+    borderRadius: 12,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  editServiceBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0050c8',
+  },
+  addServiceBtn: {
+    borderWidth: 1.5,
+    borderColor: '#0050c8',
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  addServiceBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0050c8',
+  },
 
   // ─── Looking For ───
   lookingForChips: {
@@ -508,13 +660,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
+  skillChipEditing: {
+    backgroundColor: '#f08c00',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
   skillChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0050c8',
+  },
+  addSkillBtn: {
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1.5,
+    borderColor: '#0050c8',
+    backgroundColor: '#f0f6ff',
+  },
+  addSkillBtnText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#0050c8',
   },
 
   // ─── Reviews ───
+  reviewsNote: {
+    fontSize: 12,
+    color: '#737d8a',
+    fontStyle: 'italic',
+    marginBottom: 10,
+  },
   addReviewButton: {
     backgroundColor: '#0050c8',
     borderRadius: 16,
@@ -531,9 +708,7 @@ const styles = StyleSheet.create({
     color: '#737d8a',
     fontStyle: 'italic',
   },
-  reviewsContainer: {
-    gap: 10,
-  },
+  reviewsContainer: { gap: 10 },
   reviewCard: {
     backgroundColor: '#ffffff',
     borderRadius: 14,
@@ -563,9 +738,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0050c8',
   },
-  reviewMeta: {
-    flex: 1,
-  },
+  reviewMeta: { flex: 1 },
   reviewAuthor: {
     fontSize: 13,
     fontWeight: '600',
@@ -596,6 +769,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     flexWrap: 'wrap',
+    marginBottom: 10,
+  },
+  certWrapper: {
+    position: 'relative',
+    flex: 1,
+    minWidth: '45%',
+  },
+  deleteCertBtn: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    zIndex: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#cc3333',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteCertBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#ffffff',
   },
   certPlaceholder: {
     backgroundColor: '#ffffff',
@@ -606,8 +802,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    minWidth: '45%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -624,6 +818,133 @@ const styles = StyleSheet.create({
     color: '#12213b',
     textAlign: 'center',
   },
+  addCertBtn: {
+    borderWidth: 1.5,
+    borderColor: '#0050c8',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  addCertBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0050c8',
+  },
+
+  // ─── Delete modal ───
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  modalBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+    width: '100%',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#12213b',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  modalBody: {
+    fontSize: 14,
+    color: '#737d8a',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalBtnsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  modalBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBtnOutline: {
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#0050c8',
+  },
+  modalBtnOutlineText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0050c8',
+  },
+  modalBtnRed: { backgroundColor: '#cc3333' },
+  modalBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+
+  // ─── Skill modal ───
+  skillModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  skillModalSheet: {
+    backgroundColor: '#faf5ec',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '72%',
+    gap: 16,
+  },
+  skillModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#12213b',
+    textAlign: 'center',
+  },
+  skillModalScroll: { maxHeight: 320 },
+  skillModalChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chipSelected: {
+    backgroundColor: '#f08c00',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  chipSelectedText: { color: '#ffffff', fontSize: 13, fontWeight: '500' },
+  chipUnselected: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#d4d4d8',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  chipUnselectedText: { color: '#444', fontSize: 13, fontWeight: '500' },
+  skillModalDoneBtn: {
+    backgroundColor: '#f08c00',
+    borderRadius: 26,
+    height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  skillModalDoneBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+
+  // ─── Guest wall ───
   guestWall: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 12 },
   guestWallTitle: { fontSize: 24, fontWeight: '700', color: '#12213b', textAlign: 'center' },
   guestWallBody: { fontSize: 14, color: '#737d8a', textAlign: 'center', lineHeight: 20, marginBottom: 8 },
