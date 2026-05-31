@@ -1,8 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { getIsGuest } from '../store';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getIsGuest } from '../store';
 
 type ServiceCard = {
   id: string;
@@ -168,7 +168,7 @@ export default function ProfileScreen({ isOwnProfile = true }: ProfileScreenProp
                 <TouchableOpacity style={styles.editButtonTop} activeOpacity={0.8}>
                   <Text style={styles.editButtonText}>Edit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.settingsButtonTop} activeOpacity={0.8}>
+                <TouchableOpacity style={styles.settingsButtonTop} activeOpacity={0.8} onPress={() => router.push('/account-settings')}>
                   <Text style={styles.settingsButtonText}>⚙</Text>
                 </TouchableOpacity>
               </View>
