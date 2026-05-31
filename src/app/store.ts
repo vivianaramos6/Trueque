@@ -7,7 +7,7 @@ export type Message = {
 
 let isGuest = false;
 let sarahStarted = false;
-let tradeStatus: 'awaiting' | 'user_confirmed' | 'ongoing' | 'cancelled' | null = null;
+let tradeStatus: 'awaiting' | 'user_confirmed' | 'ongoing' | 'cancelled' | 'completed' | null = null;
 let messages: Message[] = [];
 let sarahConfirmed = false;
 
@@ -56,4 +56,8 @@ export const resetConfirmation = () => {
 export const cancelTrade = () => {
   tradeStatus = 'cancelled';
   sarahConfirmed = false;
+};
+
+export const completeExchange = () => {
+  tradeStatus = 'completed';
 };
