@@ -238,9 +238,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingLeft: 24,
+    paddingRight: 16,
+    paddingTop: 12,
+    marginBottom: 4,
   },
   discoverTitle: {
     fontSize: 28,
@@ -248,8 +249,8 @@ const styles = StyleSheet.create({
     color: '#12213b',
   },
   logo: {
-    width: 120,
-    height: 52,
+    width: 110,
+    height: 48,
   },
 
   // ── Categories row ───────────────────────────────────────────────────
