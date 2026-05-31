@@ -61,3 +61,43 @@ export const cancelTrade = () => {
 export const completeExchange = () => {
   tradeStatus = 'completed';
 };
+
+// ── Services ──────────────────────────────────────────────────────────────
+export type ServiceItem = {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  exchange: string;
+};
+
+let services: ServiceItem[] = [
+  {
+    id: '1',
+    title: 'Python Tutoring',
+    description: 'Python for beginners to intermediate. Data structures, scripting, and real projects.',
+    tags: ['Python', 'Coding'],
+    exchange: 'Guitar Lessons',
+  },
+  {
+    id: '2',
+    title: 'Web Development',
+    description: 'Modern web apps with React and TypeScript. UI/UX focused development.',
+    tags: ['Coding', 'Web'],
+    exchange: 'Music Lessons',
+  },
+];
+
+export const getServices = () => services;
+
+export const addService = (service: Omit<ServiceItem, 'id'>) => {
+  services = [...services, { ...service, id: `${Date.now()}` }];
+};
+
+export const updateService = (id: string, updates: Partial<Omit<ServiceItem, 'id'>>) => {
+  services = services.map(s => s.id === id ? { ...s, ...updates } : s);
+};
+
+export const deleteService = (id: string) => {
+  services = services.filter(s => s.id !== id);
+};
