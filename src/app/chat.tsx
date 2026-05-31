@@ -156,6 +156,15 @@ export default function ChatScreen() {
             <TouchableOpacity style={styles.requestBanner} onPress={() => router.push({ pathname: '/trade-setup', params: { fromChat: '1' } })} activeOpacity={0.85}>
               <Text style={styles.requestBannerText}>Request a New Trade</Text>
             </TouchableOpacity>
+          ) : status === 'completed' ? (
+            <View style={styles.completedGroup}>
+              <View style={styles.completedBanner}>
+                <Text style={styles.completedBannerText}>✓ Exchange Completed</Text>
+              </View>
+              <TouchableOpacity style={styles.requestBanner} onPress={() => router.push({ pathname: '/trade-setup', params: { fromChat: '1' } })} activeOpacity={0.85}>
+                <Text style={styles.requestBannerText}>Request a New Trade</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <View style={styles.exchangeCard}>
               <View style={styles.pillRow}>
@@ -174,9 +183,16 @@ export default function ChatScreen() {
                   <Text style={styles.tradeValue}>Python Tutoring</Text>
                 </View>
               </View>
-              <TouchableOpacity style={styles.viewTradeRow} onPress={() => router.push({ pathname: '/trade-setup', params: { fromChat: '1' } })}>
-                <Text style={styles.viewTradeText}>View Trade ›</Text>
-              </TouchableOpacity>
+              <View style={styles.cardFooterRow}>
+                <TouchableOpacity onPress={() => router.push({ pathname: '/trade-setup', params: { fromChat: '1' } })}>
+                  <Text style={styles.viewTradeText}>View Trade ›</Text>
+                </TouchableOpacity>
+                {status === 'ongoing' && (
+                  <TouchableOpacity style={styles.completeBtn} onPress={() => router.push('/exchange-complete')} activeOpacity={0.85}>
+                    <Text style={styles.completeBtnText}>Mark as Complete</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           )}
 
@@ -383,13 +399,42 @@ const styles = StyleSheet.create({
     color: '#0050c8',
     paddingHorizontal: 8,
   },
-  viewTradeRow: {
-    alignItems: 'flex-end',
+  cardFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   viewTradeText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#0050c8',
+  },
+  completeBtn: {
+    backgroundColor: '#57cc78',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  completeBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  completedGroup: {
+    gap: 6,
+  },
+  completedBanner: {
+    backgroundColor: '#57cc78',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  completedBannerText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 
   // ── Date separator ────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getIsGuest, getMessages, getSarahStarted, getTradeStatus } from '../store';
@@ -139,14 +139,15 @@ function ConversationCard({ item, onPress, statusLabel, statusColor }: {
 
 export default function ConversationsScreen() {
   const router = useRouter();
-  const [tab, setTab] = useState<'ongoing' | 'previous'>('ongoing');
+  const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<'ongoing' | 'previous'>(tabParam === 'previous' ? 'previous' : 'ongoing');
   const [sarahVisible, setSarahVisible] = useState(false);
-  const [tradeStatus, setTradeStatus] = useState<'awaiting' | 'user_confirmed' | 'ongoing' | 'cancelled' | null>(null);
+  const [tradeStatus, setTradeStatus] = useState<'awaiting' | 'user_confirmed' | 'ongoing' | 'cancelled' | 'completed' | null>(null);
   const [sarahLastMessage, setSarahLastMessage] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => {
     setSarahVisible(getSarahStarted());
-    setTradeStatus(getTradeStatus());
+    setTradeStatus(getTradeStatus() as 'awaiting' | 'user_confirmed' | 'ongoing' | 'cancelled' | 'completed' | null);
     const msgs = getMessages();
     if (msgs.length > 0) {
       const last = msgs[msgs.length - 1];
@@ -154,13 +155,13 @@ export default function ConversationsScreen() {
     }
   }, []));
 
-  const sarahCancelled = sarahVisible && tradeStatus === 'cancelled';
+  const sarahDone = sarahVisible && (tradeStatus === 'cancelled' || tradeStatus === 'completed');
 
-  const ongoingData = (sarahVisible && !sarahCancelled ? ONGOING : ONGOING.filter(c => c.id !== '1')).map(c =>
+  const ongoingData = (sarahVisible && !sarahDone ? ONGOING : ONGOING.filter(c => c.id !== '1')).map(c =>
     c.id === '1' ? { ...c, lastMessage: sarahLastMessage ?? '' } : c
   );
 
-  const previousData = sarahCancelled
+  const previousData = sarahDone
     ? [{ ...ONGOING[0], lastMessage: sarahLastMessage ?? '', unread: 0 }, ...PREVIOUS]
     : PREVIOUS;
 
@@ -237,8 +238,8 @@ export default function ConversationsScreen() {
             <ConversationCard
               item={item}
               onPress={item.id === '1' ? () => router.push('/chat') : undefined}
-              statusLabel={item.id === '1' && tradeStatus && tradeStatus !== 'cancelled' ? (tradeStatus === 'ongoing' ? 'On-going' : 'Awaiting') : undefined}
-              statusColor={item.id === '1' && tradeStatus && tradeStatus !== 'cancelled' ? (tradeStatus === 'ongoing' ? '#57cc78' : '#f08c00') : undefined}
+              statusLabel={item.id === '1' && tradeStatus && !sarahDone ? (tradeStatus === 'ongoing' ? 'On-going' : 'Awaiting') : undefined}
+              statusColor={item.id === '1' && tradeStatus && !sarahDone ? (tradeStatus === 'ongoing' ? '#57cc78' : '#f08c00') : undefined}
             />
           )}
         />
